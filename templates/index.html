@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hallucination Detection in LLM Model Response</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #000000;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-image: url('../static/image.jpg');
+            background-size: cover;
+            background-position: center;
+        }
+        .container {
+            max-width: 1000px;
+            width: 90%;
+            background-color: rgba(255, 255, 255, 0.9);
+            padding: 60px;
+            border-radius: 30px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+            height: 430px;
+        }
+        h1 {
+            text-align: center;
+            color: #007bff;
+            margin-bottom: 20px;
+        }
+        form {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        .form-group {
+            display: flex;
+            flex-direction: column;
+
+        }
+        label {
+            margin-bottom: 5px;
+            font-weight: bold;
+            font-size: 30px;
+        }
+        input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            box-sizing: border-box;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 18px; 
+        }
+        button {
+            align-self: center; 
+            margin-top: 30px;
+            padding: 8px 20px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+            border-radius: 4px;
+            font-size: 25px;
+            transition: background-color 0.3s ease;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        #result {
+            margin-top: 30px;
+            font-weight: bold;
+            text-align: center;
+            font-size: 50px;
+        }
+        .hallucinated-text {
+            color: purple;
+        }
+        .hallucinated-part {
+            color: red;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>VeracityCheck</h1>
+        <h1>Hallucination Detection in LLM Model Response</h1>
+        <form id="detectionForm">
+            <div class="form-group">
+                <label for="question">Question:</label>
+                <input type="text" id="question" name="question" required>
+            </div>
+            <div class="form-group">
+                <label for="answer">Answer:</label>
+                <input type="text" id="answer" name="answer" required>
+            </div>
+            <button type="submit">Detect Hallucination</button>
+        </form>
+        <div id="result"></div>
+    </div>
+
+    <script>
+        document.getElementById('detectionForm').addEventListener('submit', async function(event) {
+            event.preventDefault();
+
+            const question = document.getElementById('question').value;
+            const answer = document.getElementById('answer').value;
+
+            const response = await fetch('/detect', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ question: question, answer: answer }),
+            });
+
+            const result = await response.json();
+            const resultDiv = document.getElementById('result');
+
+            if (result.hasOwnProperty('hallucinated')) {
+                if (result.hallucinated) {
+                    resultDiv.innerHTML = `<span class="hallucinated-text">Hallucinated</span><br><span class="hallucinated-part">${result.hallucinated_part}</span>`;
+                } else {
+                    resultDiv.innerHTML = 'Not Hallucinated';
+                    resultDiv.style.color = 'green';
+                }
+            } else {
+                resultDiv.innerText = 'Error in response: ' + JSON.stringify(result);
+            }
+        });
+    </script>
+</body>
+</html>
