@@ -1,17 +1,26 @@
+import os
 import json
 from langchain.chains import LLMChain
 from langchain_together import Together
 from sklearn.model_selection import train_test_split
 from langchain.prompts import SystemMessagePromptTemplate, HumanMessagePromptTemplate
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
+
+# Retrieve environment variables
+TOGETHER_API_KEY = os.getenv('TOGETHER_API_KEY')
+MODEL_NAME = os.getenv('MODEL_NAME')
 
 # Load Model for Fine-Tuning
-def load_model(model_name="mistralai/Mixtral-8x7B-Instruct-v0.1"):
+def load_model(model_name=MODEL_NAME):
     llm = Together(
         model=model_name,
         temperature=0.7,
         max_tokens=256,
         top_k=1,
-        together_api_key="b4bb49cc0500d5e4bebbe719649c88f452d099ed4814313aa3156bda74fbb50e"  
+        together_api_key=TOGETHER_API_KEY
     )
     return llm
 
@@ -83,7 +92,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Fine-tune and detect hallucinations.")
     parser.add_argument('--question', type=str, required=True, help='The question to be asked.')
     parser.add_argument('--answer', type=str, required=True, help='The answer to be evaluated.')
-    
+
     args = parser.parse_args()
 
     model = fine_tune_model()
