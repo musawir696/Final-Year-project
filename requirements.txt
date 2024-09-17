@@ -6,4 +6,5 @@ pytz==2024.1
 wheel
 python-dotenv==1.0.0
 langchain==0.0.100
+langchain_together
 
