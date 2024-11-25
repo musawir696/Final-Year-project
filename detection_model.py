@@ -1,100 +1,66 @@
-import os
-import json
 from langchain.chains import LLMChain
 from langchain_together import Together
-from sklearn.model_selection import train_test_split
-from langchain.prompts import SystemMessagePromptTemplate, HumanMessagePromptTemplate
-from dotenv import load_dotenv
+from langchain.prompts import (
+    ChatPromptTemplate,
+    SystemMessagePromptTemplate,
+    HumanMessagePromptTemplate,
+)
 
-# Load environment variables from .env file
-load_dotenv()
-
-# Retrieve environment variables
-TOGETHER_API_KEY = os.getenv('TOGETHER_API_KEY')
-MODEL_NAME = os.getenv('MODEL_NAME')
-
-# Load Model for Fine-Tuning
-def load_model(model_name=MODEL_NAME):
+## Load Model
+def load_model(model_name="mistralai/Mixtral-8x7B-Instruct-v0.1"):
     llm = Together(
         model=model_name,
         temperature=0.7,
         max_tokens=256,
         top_k=1,
-        together_api_key=TOGETHER_API_KEY
+        together_api_key="b4bb49cc0500d5e4bebbe719649c88f452d099ed4814313aa3156bda74fbb50e"  
     )
     return llm
 
-# System prompt template for hallucination detection
+# System prompt template
 def system_prompt():
     system_template = (
-        "You are a classifier which detects whether the answer is hallucinated or not. "
-        "If hallucinated, return the hallucinated part of the answer. "
+        "You are a classifier which detects that the answer is hallucinated or not. "
+        "If hallucinated, return the hallucinated part of the answer in the format: 'Hallucinated: <hallucinated part>'. "
         "If not hallucinated, return 'Not hallucinated'."
     )
-    return SystemMessagePromptTemplate.from_template(system_template)
+    system_message_prompt = SystemMessagePromptTemplate.from_template(system_template)
+    return system_message_prompt
 
 # Human prompt template
-def human_prompt(question, answer):
-    human_template = f"Question: {question}\nAnswer: {answer}\n"
-    return HumanMessagePromptTemplate.from_template(human_template)
+def human_prompt(text):
+    human_template = "{text}"
+    human_message_prompt = HumanMessagePromptTemplate.from_template(human_template)
+    return human_message_prompt.format(text=text)
 
-# Fine-tune model
-def fine_tune_model():
-    # Load the dataset
-    with open('qa_data.json') as f:
-        data = [json.loads(line) for line in f]
+# Chat prompt template
+def create_chat_prompt(text):
+    system_query = system_prompt()
+    human_query = human_prompt(text)
+    chat_prompt = ChatPromptTemplate.from_messages([system_query, human_query])
+    return chat_prompt
 
-    # Split into training and testing datasets
-    train_data, test_data = train_test_split(data, test_size=0.2, random_state=42)
-
-    # Load the model
-    llm = load_model()
-
-    # Train the model using the fine-tuning method
-    for entry in train_data:
-        question = entry["question"]
-        answer = entry["hallucinated_answer"]
-        right_answer = entry["right_answer"]
-
-        # Create the prompts for training
-        prompt = human_prompt(question, answer)
-        chain = LLMChain(llm=llm, prompt=prompt, verbose=True)
-        chain.run(text=prompt)
-
-    return llm  # Return the fine-tuned model
-
-# Detection function using the fine-tuned model
-def detect_hallucination(question, answer, model):
-    prompt = (
-        f"Question: {question}\n"
-        f"Answer: {answer}\n"
+def detect_hallucination(question, answer):
+    # Create the prompt
+    prompting = (
+        "Question: " + question + "\n"
+        "Answer: " + answer + "\n"
         "Is the answer factual and correct? (yes or no): "
     )
-
-    system_template = system_prompt()
-    chat_prompt = system_template.format_prompt(text=prompt)
-    chain = LLMChain(llm=model, prompt=chat_prompt, verbose=True)
-    response = chain.run(text=prompt)
-
+    
+    chat_prompt = create_chat_prompt(prompting)
+    llm = load_model()
+    chain = LLMChain(llm=llm, prompt=chat_prompt, verbose=True)
+    response = chain.run(text=prompting)
+    
     # Process the response to find the hallucinated part
     if "Not hallucinated" in response:
         return False, None
     elif "Hallucinated:" in response:
-        hallucinated_part = response.split("Hallucinated:")[1].strip().split('.')[0].strip()
+        # Split the response to extract the hallucinated part
+        hallucinated_part = response.split("Hallucinated:")[1].strip()  # Extract the part after 'Hallucinated:'
+        # Further clean up by removing any lingering text after the hallucinated part
+        hallucinated_part = hallucinated_part.split('.')[0].strip()  # Stop at the first period or another delimiter
         return True, hallucinated_part
     else:
-        return None, None
-
-# Generic usage
-if __name__ == "__main__":
-    import argparse
-
-    parser = argparse.ArgumentParser(description="Fine-tune and detect hallucinations.")
-    parser.add_argument('--question', type=str, required=True, help='The question to be asked.')
-    parser.add_argument('--answer', type=str, required=True, help='The answer to be evaluated.')
-
-    args = parser.parse_args()
-
-    model = fine_tune_model()
-    hallucinated, hallucinated_part = detect_hallucination(args.question, args.answer, model)
-    print(f"Hallucinated: {hallucinated}, Part: {hallucinated_part}")
+        return None, None  # Inconclusive response
