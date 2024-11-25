@@ -5,4 +5,8 @@ python-slugify==8.0.4
 pytz==2024.1
 wheel
 python-dotenv==1.0.0
+<<<<<<< HEAD
 langchain==0.0.100
+=======
+langchain==0.0.100
+>>>>>>> 8ebed42e9c9ae931ecd988b65ce912de92207b63
